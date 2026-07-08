@@ -1,0 +1,60 @@
+name: Deploy InnovacionComercialX (Frontend + Backend)
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          cd workspaces/innovacioncomercialx-frontend && npm ci
+          cd ../innovacioncomercialx-backend && npm ci
+
+      - name: Build frontend
+        run: |
+          cd workspaces/innovacioncomercialx-frontend
+          export NODE_OPTIONS="--max-old-space-size=8192"
+          npm run build
+
+      - name: Deploy frontend dist
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: "workspaces/innovacioncomercialx-frontend/dist/*"
+          target: "/var/www/innovacioncomercialx-frontend/dist"
+
+      - name: Deploy backend
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: "workspaces/innovacioncomercialx-backend/*"
+          target: "/workspaces/innovacioncomercialx-backend/"
+
+      - name: Run deploy.sh and restart backend
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd /workspaces/innovacioncomercialx-frontend
+            ./deploy.sh
+            cd /workspaces/innovacioncomercialx-backend
+            pm2 restart server.js || pm2 start server.js --name innovacion-backend --watch
