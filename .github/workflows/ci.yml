@@ -1,4 +1,4 @@
-name: Node.js CI
+name: Node.js CI Extended
 
 on:
   push:
@@ -22,5 +22,12 @@ jobs:
     - name: Install dependencies
       run: npm install
 
-    - name: Run dev script
-      run: npm run dev
+    - name: Lint code
+      run: |
+        npx eslint src || echo "Lint warnings/errors detectados"
+
+    - name: Run tests
+      run: npm test
+
+    - name: Build project
+      run: npm run build || echo "No build definido, solo validación"
